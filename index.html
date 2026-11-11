@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HOLDEMER 3.0 — Poker Thinking Gym</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B0F17;
+            color: #F3F4F6;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-card {
+            background: rgba(20, 27, 45, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .poker-felt {
+            background: radial-gradient(circle at center, #113a2b 0%, #091e17 100%);
+            border: 2px solid #1f5c44;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.7);
+        }
+        .playing-card {
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.45);
+            border-radius: 8px;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            user-select: none;
+        }
+        .suit-spade, .suit-club { color: #111827; }
+        .suit-heart { color: #E11D48; }
+        .suit-diamond { color: #2563EB; } /* Четырехцветная колода как в про-румах! */
+        .suit-club { color: #16A34A; }
+        .fade-in { animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-24 max-w-md mx-auto relative selection:bg-emerald-500 selection:text-white">
+
+    <!-- ВЕРХНЯЯ ПАНЕЛЬ (ШАПКА ДАШБОРДА) -->
+    <header class="sticky top-0 z-30 glass-card px-4 py-3 flex items-center justify-between border-b border-gray-800">
+        <div class="flex items-center space-x-2" onclick="switchTab('home')">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-extrabold">
+                ♠️
+            </div>
+            <div>
+                <h1 class="text-sm font-extrabold tracking-wider text-white">HOLDEMER <span class="text-xs font-semibold text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded">3.0</span></h1>
+                <p class="text-[10px] text-gray-400">Poker Thinking Gym</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <div class="bg-gray-900/90 border border-gray-800 px-2.5 py-1 rounded-full flex items-center space-x-1">
+                <span class="text-xs">🔥</span>
+                <span id="streak-val" class="text-xs font-bold text-amber-400">5</span>
+            </div>
+            <div class="bg-gray-900/90 border border-gray-800 px-2.5 py-1 rounded-full flex items-center space-x-1">
+                <span class="text-xs">💰</span>
+                <span id="bb-val" class="text-xs font-bold text-emerald-400">18 BB</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ОСНОВНОЙ КОНТЕЙНЕР ЭКРАНОВ -->
+    <main class="p-4 space-y-4">
+
+        <!-- ==================== ЭКРАН 1: ГЛАВНЫЙ ДАШБОРД ==================== -->
+        <section id="tab-home" class="space-y-4 fade-in">
+            <!-- Фокус на сессию -->
+            <div class="glass-card rounded-2xl p-4 border-l-4 border-l-emerald-500">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">🎯 Твоя установка на игру</span>
+                    <span class="text-[10px] text-gray-500">NL2–NL50 Cash</span>
+                </div>
+                <p id="daily-focus-text" class="text-sm font-medium text-gray-200 leading-snug">
+                    «Не переигрывать топ-пары OOP и атаковать капнутые чеки регуляров на тёрне.»
+                </p>
+            </div>
+
+            <!-- Главная карточка: Тренажер Мышления -->
+            <div class="poker-felt rounded-2xl p-5 relative overflow-hidden">
+                <div class="relative z-10">
+                    <span class="inline-block text-[10px] font-bold uppercase tracking-widest bg-black/40 text-emerald-300 px-2.5 py-1 rounded-full mb-2 border border-emerald-500/30">
+                        🧠 Логика + Раздачи
+                    </span>
+                    <h2 class="text-xl font-extrabold text-white mb-1">Тренажер Мышления</h2>
+                    <p class="text-xs text-emerald-100/80 mb-4">Чтение диапазонов, поиск багов логики и эксплойт поля с микро-уроками.</p>
+                    <button onclick="startPractice('all')" class="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition text-gray-950 font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-950/60 flex items-center justify-center space-x-2">
+                        <span>🚀 Начать тренировку</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Ежедневные ритуалы (2 колонки) -->
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="openWarmupModal()" class="glass-card p-3.5 rounded-2xl text-left hover:border-amber-500/40 transition active:scale-95">
+                    <div class="text-lg mb-1">🔥</div>
+                    <div class="text-xs font-bold text-white">Разминка (3 мин)</div>
+                    <div class="text-[11px] text-gray-400 mt-0.5">Настройка мозга перед каткой</div>
+                </button>
+                <button onclick="openTiltModal()" class="glass-card p-3.5 rounded-2xl text-left border-rose-500/20 hover:border-rose-500/50 transition active:scale-95">
+                    <div class="text-lg mb-1">🚨</div>
+                    <div class="text-xs font-bold text-rose-400">TILT SOS</div>
+                    <div class="text-[11px] text-gray-400 mt-0.5">Экстренный стоп-кран</div>
+                </button>
+            </div>
+
+            <!-- Быстрый фильтр режима задач -->
+            <div class="glass-card rounded-2xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">⚡ Выбери формат тренировки</h3>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="startPractice('thinking')" class="bg-gray-900/90 hover:bg-gray-800 border border-purple-500/30 rounded-xl p-2.5 text-left">
+                        <div class="text-xs font-bold text-purple-300">🕵️‍♂️ Чтение диапазонов</div>
+                        <div class="text-[10px] text-gray-400">Только логика без угадайки</div>
+                    </button>
+                    <button onclick="startPractice('spots')" class="bg-gray-900/90 hover:bg-gray-800 border border-emerald-500/30 rounded-xl p-2.5 text-left">
+                        <div class="text-xs font-bold text-emerald-300">🃏 Боевые споты</div>
+                        <div class="text-[10px] text-gray-400">Решения по улицам и EV</div>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ЭКРАН 2: ТРЕНАЖЕР (СПОТ И РАЗБОР) ==================== -->
+        <section id="tab-trainer" class="hidden space-y-3 fade-in">
+            <!-- Бейдж тега и типа задачи -->
+            <div class="flex items-center justify-between">
+                <span id="spot-tag-badge" class="text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50 px-2.5 py-1 rounded-lg">
+                    3-Bet OOP Коллер
+                </span>
+                <span id="spot-type-badge" class="text-[11px] font-semibold text-purple-300 bg-purple-950/80 border border-purple-700/40 px-2.5 py-1 rounded-lg">
+                    🧠 Покерная логика
+                </span>
+            </div>
+
+            <!-- Визуальный покерный стол с картами -->
+            <div class="poker-felt rounded-2xl p-4 space-y-3">
+                <div class="flex items-center justify-between text-xs text-emerald-100/90 border-b border-white/10 pb-2">
+                    <span id="spot-title" class="font-bold">3-Bet Pot | 100 bb | CO vs BTN</span>
+                    <span id="spot-pot" class="bg-black/40 px-2 py-0.5 rounded text-amber-300 font-bold">Банк: 26.6 bb</span>
+                </div>
+
+                <!-- Нотс на оппонента -->
+                <div class="bg-black/35 rounded-xl p-2.5 border border-white/10 flex items-start space-x-2">
+                    <span class="text-sm">🗒</span>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-amber-400 font-bold">Нотс на оппонента:</div>
+                        <div id="spot-notes" class="text-xs text-white font-medium">Тайтовый регуляр (чекает тёрн только со слабым/средним диапазоном)</div>
+                    </div>
+                </div>
+
+                <!-- Карты борда и Рука Hero -->
+                <div class="flex items-center justify-between pt-1">
+                    <div>
+                        <div class="text-[10px] uppercase text-emerald-200/70 font-semibold mb-1">Борд на столе:</div>
+                        <div id="board-cards" class="flex space-x-1.5"></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] uppercase text-emerald-200/70 font-semibold mb-1">Рука Hero:</div>
+                        <div id="hero-cards" class="flex space-x-1 justify-end"></div>
+                    </div>
+                </div>
+
+                <!-- Линия розыгрыша -->
+                <div class="bg-black/30 rounded-xl p-2.5 text-xs text-gray-200 leading-relaxed border border-white/5">
+                    <span class="text-emerald-400 font-bold">Линия: </span>
+                    <span id="spot-line">Префлоп BTN 2.5 bb -> BB колл. Флоп: чек -> бет 33% -> колл. Тёрн: чек -> BTN чек бэк.</span>
+                </div>
+            </div>
+
+            <!-- Вопрос задачи -->
+            <div class="glass-card rounded-2xl p-4">
+                <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">🤔 Вопрос на мышление:</div>
+                <h3 id="spot-question" class="text-sm font-bold text-white leading-snug">
+                    Что означает чек вдогонку от регуляра на тёрне с точки зрения его диапазона?
+                </h3>
+
+                <!-- Кнопки вариантов ответа -->
+                <div id="answer-buttons" class="mt-3.5 space-y-2"></div>
+            </div>
+
+            <!-- БЛОК РАЗБОРА (Появляется после ответа) -->
+            <div id="feedback-box" class="hidden glass-card rounded-2xl p-4 space-y-3 border-t-4 fade-in">
+                <div id="feedback-header" class="font-extrabold text-sm"></div>
+                <p id="feedback-text" class="text-xs text-gray-200 leading-relaxed"></p>
+
+                <!-- Золотое правило -->
+                <div id="golden-rule-box" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                    <div class="text-[10px] font-extrabold uppercase text-amber-400 mb-0.5">📌 Золотое правило в игру:</div>
+                    <div id="golden-rule-text" class="text-xs italic text-amber-100 font-medium"></div>
+                </div>
+
+                <!-- Интерактивные вопросы-спойлеры (Сборка статьи) -->
+                <div class="pt-2 border-t border-gray-800">
+                    <div class="text-[11px] font-bold text-gray-400 mb-2">📚 Углубиться в нюансы (нажми, чтобы раскрыть):</div>
+                    <div id="dives-container" class="space-y-2"></div>
+                </div>
+
+                <!-- Нижние кнопки навигации -->
+                <div class="pt-2 flex space-x-2">
+                    <button id="btn-save-rule" onclick="saveCurrentRule()" class="flex-1 bg-gray-800 hover:bg-gray-700 text-xs font-bold py-2.5 rounded-xl border border-gray-700">
+                        📌 В Методичку
+                    </button>
+                    <button onclick="nextSpot()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-extrabold py-2.5 rounded-xl">
+                        ⏭ Следующий спот
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ЭКРАН 3: ПРОФИЛЬ И МЕТОДИЧКА ==================== -->
+        <section id="tab-profile" class="hidden space-y-4 fade-in">
+            <div class="glass-card rounded-2xl p-4">
+                <h2 class="text-sm font-extrabold uppercase tracking-wider text-white mb-3">📊 Диагностика покерного мышления</h2>
+                <div class="grid grid-cols-2 gap-2.5 mb-4">
+                    <div class="bg-gray-900/80 p-3 rounded-xl border border-gray-800">
+                        <div class="text-[10px] text-gray-400">Точность с 1-й попытки</div>
+                        <div class="text-lg font-extrabold text-emerald-400">78%</div>
+                    </div>
+                    <div class="bg-gray-900/80 p-3 rounded-xl border border-gray-800">
+                        <div class="text-[10px] text-gray-400">Рекордная серия</div>
+                        <div class="text-lg font-extrabold text-amber-400">12 спотов</div>
+                    </div>
+                </div>
+
+                <!-- Навыки -->
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <div class="flex justify-between mb-1"><span class="font-bold">🕵️‍♂️ Чтение диапазонов (Логика)</span><span class="text-emerald-400 font-bold">85%</span></div>
+                        <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width:85%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1"><span class="font-bold">SRP IP Агрессор</span><span class="text-emerald-400 font-bold">90%</span></div>
+                        <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width:90%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1"><span class="font-bold text-rose-400">🚨 3-Bet OOP Коллер (Утечка EV)</span><span class="text-rose-400 font-bold">45%</span></div>
+                        <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden"><div class="bg-rose-500 h-full" style="width:45%"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Методичка сохраненных правил -->
+            <div class="glass-card rounded-2xl p-4">
+                <h3 class="text-xs font-extrabold uppercase tracking-wider text-amber-400 mb-2">📌 Моя Методичка (Золотые правила)</h3>
+                <div id="saved-rules-list" class="space-y-2 text-xs text-gray-300"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- МОДАЛЬНОЕ ОКНО: TILT SOS -->
+    <div id="modal-tilt" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-card rounded-2xl p-5 max-w-sm w-full border border-rose-500/40 space-y-3 fade-in">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold uppercase text-rose-400">🚨 ПРОТОКОЛ TILT SOS</span>
+                <button onclick="closeModals()" class="text-gray-400 text-sm">✕</button>
+            </div>
+            <p class="text-xs text-gray-200 leading-relaxed">
+                ✋ <b>Убери руку от мышки на 30 секунд.</b> Кулер — это просто математический налог на то, что за столами сидят фиши. Попытка отыграться прямо сейчас сожжет твой недельный винрейт.
+            </p>
+            <div class="bg-gray-900 p-3 rounded-xl text-xs text-emerald-300 border border-gray-800">
+                ✅ <b>Действие +EV:</b> Встань на 2 минуты, выпей воды и проверь: не открыл ли ты лишние столы.
+            </div>
+            <button onclick="closeModals(); startPractice('thinking')" class="w-full bg-emerald-500 text-gray-950 font-extrabold text-xs py-2.5 rounded-xl">
+                🧠 Переключить мозг (Задачка на логику)
+            </button>
+        </div>
+    </div>
+
+    <!-- НИЖНЯЯ НАВИГАЦИЯ (ТАБ-БАР ПРИЛОЖЕНИЯ) -->
+    <nav class="fixed bottom-0 inset-x-0 max-w-md mx-auto glass-card border-t border-gray-800 px-6 py-2.5 flex justify-around z-40">
+        <button onclick="switchTab('home')" id="nav-home" class="flex flex-col items-center text-emerald-400">
+            <span class="text-lg">🏠</span>
+            <span class="text-[10px] font-bold mt-0.5">Главная</span>
+        </button>
+        <button onclick="startPractice('all')" id="nav-trainer" class="flex flex-col items-center text-gray-400">
+            <span class="text-lg">🧠</span>
+            <span class="text-[10px] font-bold mt-0.5">Тренажер</span>
+        </button>
+        <button onclick="switchTab('profile')" id="nav-profile" class="flex flex-col items-center text-gray-400">
+            <span class="text-lg">📌</span>
+            <span class="text-[10px] font-bold mt-0.5">Профиль & Правила</span>
+        </button>
+    </nav>
+
+    <script>
+        // Инициализация Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+
+        // База демонстрационных задач (включая новые задачи НА ЛОГИКУ и МЫШЛЕНИЕ!)
+        const SPOTS = [
+            {
+                id: 101,
+                mode: "thinking",
+                tag: "SRP OOP Коллер • Эксплойт",
+                typeBadge: "🕵️‍♂️ Чтение диапазонов",
+                title: "SRP | 100 bb | BB vs BTN (Hero OOP)",
+                pot: "Банк: 9.1 bb",
+                notes: "Прямолинейный регуляр (ставит тёрн со всеми сильными Kx и сетами)",
+                board: ["K♣", "8♦", "2♠", "9♥", "3♦"],
+                hero: ["8♠", "7♠"],
+                line: "Префлоп BTN 2.5 bb -> BB колл. Флоп: чек -> бет 33% -> колл. Тёрн (9♥): чек -> BTN чекает вдогонку! Ривер: 3♦.",
+                question: "Прежде чем выбрать действие: что произошло с диапазоном BTN после его чека на тёрне?",
+                goldenRule: "Чек вдогонку на тёрне от прямолинейного рега капнет (ограничивает) его диапазон — атакуй его на ривере мелким блок-бетом 25-33% на тонкое велью.",
+                options: [
+                    {
+                        type: "correct",
+                        text: "Диапазон капнут (нет сильных Kx и сетов)",
+                        explanation: "Абсолютно верно! Сильные короли (AK, KQ), две пары и сеты обязательно ставили бы второй баррель на тёрне. Его чек означает, что там остались только карманные пары (44–77), слабые 8x и промазавшие A-хай. Поэтому на ривере мы ставим блок-бет 30% с 87s на тонкое велью!"
+                    },
+                    {
+                        type: "err1",
+                        text: "Диапазон полярный (монстры в ловушке или воздух)",
+                        explanation: "Грубое заблуждение. На микролимитах реги почти никогда не чекают сеты и АК на тёрне в позиции, потому что боятся недобрать."
+                    },
+                    {
+                        type: "err2",
+                        text: "Там в основном средние короли (KJ, KT)",
+                        explanation: "Неточно: на сухом борде K-8-2-9 даже KJ и KT у регуляра почти всегда ставят второй баррель для добора с твоих пар."
+                    }
+                ],
+                dives: [
+                    { q: "❓ Какое действие вытекает из этого чтения?", a: "Раз у соперника нет топ-пар, а его карманки (55-77) и A-хай прочекают ривер вдогонку — мы сами ставим мелкий блок-бет 25-33% банка и забираем тонкое велью!" },
+                    { q: "❓ А если бы у нас были промазавшие 65s?", a: "Против капнутого диапазона с воздухом без шоудауна мы бы ставили плотный блеф 75% банка, выбивая все его мелкие пары." }
+                ]
+            },
+            {
+                id: 102,
+                mode: "thinking",
+                tag: "SRP IP Агрессор • Логика",
+                typeBadge: "🔄 Контрфактическая логика",
+                title: "SRP | 100 bb | BTN vs BB (Hero IP)",
+                pot: "Банк: 5.5 bb",
+                notes: "Пассивный телефон на BB (не любит сдаваться с парами)",
+                board: ["A♠", "K♦", "7♣"],
+                hero: ["Q♠", "Q♥"],
+                line: "Базовое решение: на флопе A-K-7 с дамами (QQ) мы всегда играем ЧЕК БЭК, так как ставка выбьет руки хуже и изолирует нас против тузов и королей.",
+                question: "Какое ОДНО изменение борда превратит наши QQ из 100% чека в 100% ставку 33% банка?",
+                goldenRule: "Третья пара на A-K-x всегда играет чек для контроля банка, но вторая пара на сухом борде A-7-2 ставится мелким контбетом за счет перевеса диапазона.",
+                options: [
+                    {
+                        type: "correct",
+                        text: "Замена Короля на Двойку (борд A♠ 7♦ 2♣)",
+                        explanation: "Бинго! На борде A-7-2 исчезает вторая бродвейная оверкарта. Теперь дамы (QQ) — это сильная вторая пара, с которой мы добираем тонкое велью с карманок (88-JJ), семёрок и выбиваем эквити рук вроде KQo."
+                    },
+                    {
+                        type: "err1",
+                        text: "Появление флеш-дро на борде (A♠ K♠ 7♦)",
+                        explanation: "Ошибка мышления («погоня за защитой»). На борде с двумя оверкартами A-K ставка с QQ ради защиты от флеш-дро всё равно сжигает деньги."
+                    },
+                    {
+                        type: "err2",
+                        text: "Если против нас сидит агрессивный рег",
+                        explanation: "Против агрессивного рега чек с QQ на A-K-7 еще лучше: мы защищаем свой диапазон чека и ловим его блефы на тёрне."
+                    }
+                ],
+                dives: [
+                    { q: "❓ Почему покеристы часто лепят бет с QQ на A-K-7?", a: "Срабатывает психологический баг: «У меня же префлоп-премиум дамы, надо поставить и проверить, есть ли у него туз». В кэше не ставят «для информации»." },
+                    { q: "❓ Что делать с QQ на тёрне после чека на A-K-7?", a: "Если BB снова чекает тёрн, значит туза у него чаще всего нет — тогда мы ставим один тонкий баррель для добора с карманок младше." }
+                ]
+            },
+            {
+                id: 103,
+                mode: "spots",
+                tag: "3-Bet OOP Коллер",
+                typeBadge: "🃏 Боевой спот",
+                title: "3-Bet Pot | 100 bb | CO vs BTN (Hero OOP)",
+                pot: "Банк: 26.6 bb",
+                notes: "Агрессивный регуляр (любит баррелить в позиции)",
+                board: ["Q♠", "9♦", "4♣", "2♥"],
+                hero: ["Q♦", "J♦"],
+                line: "Префлоп CO 2.5 -> BTN 3-бет 7.5 -> CO колл. Флоп: чек -> бет 33% -> колл. Тёрн (2♥): чек -> BTN ставит 65% банка (17.3 bb).",
+                question: "Какое решение с топ-парой QJ принесет максимальное ожидание (EV)?",
+                goldenRule: "В 3-бет банках на бланковом тёрне топ-пара не фолдится против агрессора и не рейзится, чтобы не выбить его блефы.",
+                options: [
+                    {
+                        type: "correct",
+                        text: "Колл 17.3 bb",
+                        explanation: "Чек-колл удерживает все блефы и полублефы BTN (AK, AJ, JT, флеш-дро) в банке. Сброс топ-пары здесь приведет к катастрофическому оверфолду."
+                    },
+                    {
+                        type: "err1",
+                        text: "Фолд на тёрне",
+                        explanation: "Грубый оверфолд из страха перед оверпарами. Против агрессивного 3-беттора сбрасывать топ-пару на бланке 2♥ нельзя."
+                    },
+                    {
+                        type: "err2",
+                        text: "Чек-рейз олл-ин",
+                        explanation: "Превращение хорошей руки в блеф: на пуш BTN выбросит все блефы и ответит только с AA, KK, AQ и сетами."
+                    }
+                ],
+                dives: [
+                    { q: "❓ Как блокеры в руке Q♦J♦ помогают коллу?", a: "Дама блокирует велью-руки соперника (AQ, KQ, QQ), а валет блокирует KJs, оставляя в диапазоне BTN кучу промазавших AK." },
+                    { q: "❓ Против кого чек-фолд здесь был бы верным?", a: "Только против пассивного нита, у которого второй баррель 65% в 3-бет поте означает строго оверпару AA-KK или сет." }
+                ]
+            }
+        ];
+
+        let currentPool = [...SPOTS];
+        let currentIndex = 0;
+        let balance = 18;
+        let streak = 5;
+        let firstAttempt = true;
+        let savedRules = [
+            "Чек вдогонку на тёрне от прямолинейного рега капнет его диапазон — атакуй его на ривере мелким блок-бетом 25-33%."
+        ];
+
+        function parseCardHTML(cardStr) {
+            const rank = cardStr.slice(0, -1);
+            const suit = cardStr.slice(-1);
+            let suitClass = "suit-spade";
+            if (suit === "♥") suitClass = "suit-heart";
+            if (suit === "♦") suitClass = "suit-diamond";
+            if (suit === "♣") suitClass = "suit-club";
+            return `<div class="playing-card w-9 h-12 ${suitClass}">
+                        <span class="text-xs leading-none">${rank}</span>
+                        <span class="text-sm leading-none mt-0.5">${suit}</span>
+                    </div>`;
+        }
+
+        function switchTab(tab) {
+            ["home", "trainer", "profile"].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add("hidden");
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (navBtn) navBtn.className = "flex flex-col items-center text-gray-400";
+            });
+            document.getElementById(`tab-${tab}`).classList.remove("hidden");
+            const activeNav = document.getElementById(`nav-${tab}`);
+            if (activeNav) activeNav.className = "flex flex-col items-center text-emerald-400";
+            if (tab === "profile") renderSavedRules();
+        }
+
+        function startPractice(filterMode) {
+            if (filterMode === "thinking") {
+                currentPool = SPOTS.filter(s => s.mode === "thinking");
+            } else if (filterMode === "spots") {
+                currentPool = SPOTS.filter(s => s.mode === "spots");
+            } else {
+                currentPool = [...SPOTS];
+            }
+            currentIndex = 0;
+            switchTab("trainer");
+            renderSpot();
+        }
+
+        function renderSpot() {
+            const spot = currentPool[currentIndex % currentPool.length];
+            firstAttempt = true;
+            document.getElementById("feedback-box").classList.add("hidden");
+            document.getElementById("spot-tag-badge").innerText = spot.tag;
+            document.getElementById("spot-type-badge").innerText = spot.typeBadge;
+            document.getElementById("spot-title").innerText = spot.title;
+            document.getElementById("spot-pot").innerText = spot.pot;
+            document.getElementById("spot-notes").innerText = spot.notes;
+            document.getElementById("spot-line").innerText = spot.line;
+            document.getElementById("spot-question").innerText = spot.question;
+
+            document.getElementById("board-cards").innerHTML = spot.board.map(parseCardHTML).join("");
+            document.getElementById("hero-cards").innerHTML = spot.hero.map(parseCardHTML).join("");
+
+            const btnContainer = document.getElementById("answer-buttons");
+            btnContainer.innerHTML = "";
+            spot.options.forEach((opt, idx) => {
+                const btn = document.createElement("button");
+                btn.className = "w-full bg-gray-900/90 hover:bg-gray-800 border border-gray-700/80 text-left px-3.5 py-3 rounded-xl text-xs font-semibold text-gray-100 transition flex items-center justify-between active:scale-[0.99]";
+                btn.innerHTML = `<span>👉 ${opt.text}</span><span class="text-gray-500">→</span>`;
+                btn.onclick = () => selectAnswer(spot, opt, btn);
+                btnContainer.appendChild(btn);
+            });
+        }
+
+        function selectAnswer(spot, opt, btnEl) {
+            const fbBox = document.getElementById("feedback-box");
+            const fbHeader = document.getElementById("feedback-header");
+            const fbText = document.getElementById("feedback-text");
+            const ruleBox = document.getElementById("golden-rule-box");
+
+            fbBox.classList.remove("hidden", "border-emerald-500", "border-amber-500", "border-rose-500");
+
+            if (opt.type === "correct") {
+                if (firstAttempt) {
+                    balance += 2;
+                    streak += 1;
+                }
+                btnEl.className = "w-full bg-emerald-500/20 border-2 border-emerald-500 text-left px-3.5 py-3 rounded-xl text-xs font-bold text-emerald-300 flex items-center justify-between";
+                fbBox.classList.add("border-emerald-500");
+                fbHeader.className = "font-extrabold text-sm text-emerald-400";
+                fbHeader.innerText = "🔥 ВЕРНАЯ ЛОГИКА! (+2 BB)";
+                fbText.innerText = opt.explanation;
+
+                ruleBox.classList.remove("hidden");
+                document.getElementById("golden-rule-text").innerText = spot.goldenRule;
+            } else {
+                firstAttempt = false;
+                streak = 0;
+                const isBlunder = opt.type === "err1";
+                btnEl.className = `w-full ${isBlunder ? 'bg-rose-500/20 border-rose-500 text-rose-300' : 'bg-amber-500/20 border-amber-500 text-amber-300'} border-2 text-left px-3.5 py-3 rounded-xl text-xs font-bold flex items-center justify-between`;
+                fbBox.classList.add(isBlunder ? "border-rose-500" : "border-amber-500");
+                fbHeader.className = `font-extrabold text-sm ${isBlunder ? 'text-rose-400' : 'text-amber-400'}`;
+                fbHeader.innerText = isBlunder ? "❌ ОШИБКА МЫШЛЕНИЯ (Blunder)" : "⚠️ НЕТОЧНОСТЬ / АЛЬТЕРНАТИВА";
+                fbText.innerText = opt.explanation;
+                ruleBox.classList.add("hidden");
+            }
+
+            document.getElementById("bb-val").innerText = `${balance} BB`;
+            document.getElementById("streak-val").innerText = streak;
+
+            // Рендерим доп. вопросы
+            const divesCont = document.getElementById("dives-container");
+            divesCont.innerHTML = "";
+            spot.dives.forEach(d => {
+                const wrap = document.createElement("div");
+                wrap.className = "bg-gray-900/90 border border-gray-800 rounded-xl p-2.5 cursor-pointer";
+                wrap.innerHTML = `<div class="text-xs font-bold text-gray-200">${d.q}</div>
+                                  <div class="hidden text-xs text-emerald-200/90 mt-1.5 pt-1.5 border-t border-gray-800">${d.a}</div>`;
+                wrap.onclick = function() {
+                    this.querySelector("div:nth-child(2)").classList.toggle("hidden");
+                };
+                divesCont.appendChild(wrap);
+            });
+        }
+
+        function nextSpot() {
+            currentIndex++;
+            renderSpot();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function saveCurrentRule() {
+            const spot = currentPool[currentIndex % currentPool.length];
+            if (!savedRules.includes(spot.goldenRule)) {
+                savedRules.push(spot.goldenRule);
+            }
+            const btn = document.getElementById("btn-save-rule");
+            btn.innerText = "✅ В Методичке";
+        }
+
+        function renderSavedRules() {
+            const list = document.getElementById("saved-rules-list");
+            list.innerHTML = savedRules.map((r, i) => `
+                <div class="bg-gray-900/90 border border-gray-800 p-3 rounded-xl">
+                    <span class="text-amber-400 font-bold">#${i+1}.</span> ${r}
+                </div>
+            `).join("");
+        }
+
+        function openTiltModal() {
+            document.getElementById("modal-tilt").classList.remove("hidden");
+        }
+        function openWarmupModal() {
+            startPractice('thinking');
+        }
+        function closeModals() {
+            document.getElementById("modal-tilt").classList.add("hidden");
+        }
+    </script>
+</body>
+</html>
